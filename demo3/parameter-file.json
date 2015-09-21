@@ -1,0 +1,63 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "allocationMethod": {
+      "value": "Dynamic"
+    },
+    "resourcePrefix": {
+      "value": "test-resource"
+    },
+    "newStorageAccountName": {
+      "value": "winopsstoraccount"
+    },
+    "adminUsername": {
+      "value": "testadmin"
+    },
+    "adminPassword": {
+      "value": "P4ssw0rd"
+    },
+    "dnsNameForPublicIP": {
+      "value": "winopsuniqdns"
+    },
+    "windowsOSVersion": {
+      "value": "2012-R2-Datacenter"
+    },
+    "sizeOfDiskInGB": {
+      "value": "20"
+    },
+    "redisCacheName": {
+            "value": "winops-cache"
+        },
+        "redisCacheLocation": {
+            "value": "West Europe"
+        },
+        "diagnosticsStorageAccountName": {
+            "value": "winopsstoraccount"
+        },
+        "enableNonSslPort": { 
+            "value": true
+        },
+     "siteName": {
+      "value": "winopsgolang"
+    },
+    "appServicePlanName": {
+      "value": "demogolang"
+    },
+    "siteLocation": {
+      "value": "West Europe"
+    },
+    "sku": {
+      "value": "Free"
+    },
+    "workerSize": {
+      "value": "0"
+    },
+    "use32bitWorkerProcess": {
+      "value": true
+    },
+    "enableAlwaysOn": {
+      "value": false
+    }
+  }
+}
