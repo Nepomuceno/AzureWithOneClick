@@ -1,0 +1,47 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "allocationMethod": {
+      "type": "string",
+      "metadata": {
+        "description": "Type of allocation for the base template"
+      },
+      "allowedValues": [
+        "Static",
+        "Dynamic"
+      ],
+      "defaultValue": "Dynamic"
+    },
+    "resourcePrefix": {
+      "type": "string",
+      "metadata": {
+        "description": "prefix used to create the resource names."
+      }
+    }
+  },
+  "variables": {
+    "avaliabilitySetName": "[concat(parameters('resourcePrefix'),'-','as')]",
+    "publicIp": "[concat(parameters('resourcePrefix'),'-','ip')]"
+  },
+  "resources": [
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[variables('avaliabilitySetName')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "platformFaultDomainCount": 2
+      }
+    },
+    {
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[variables('publicIp')]",
+      "apiVersion": "2015-06-15",
+      "location": "[resourceGroup().location]",
+      "properties": { 
+        "publicIPAllocationMethod": "[parameters('allocationMethod')]" 
+      }
+    }
+  ]
+}
