@@ -1,0 +1,36 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentParameters.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "MachinePrefix": {
+      "value": "wops-test"
+    },
+    "MachineCount": {
+      "value": 40
+    },
+    "MachineSize": {
+      "value": "Standard_A0"
+    },
+    "VNetName": {
+      "value": "ve-network"
+    },
+    "SubnetName": {
+      "value": "internal-subnet"
+    },
+    "StorageType": {
+      "value": "Standard_LRS"
+    },
+    "StorageName": {
+      "value": "winopshundreddep"
+    },
+    "AdminUser": {
+      "value":"winadmin"
+    },
+    "AdminPassword": {
+      "value": "P4ssw0rd!"
+    },
+    "SecondaryDiskSizeGB": {
+      "value": 10
+    }
+  }
+}

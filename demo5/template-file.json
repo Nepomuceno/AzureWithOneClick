@@ -1,0 +1,328 @@
+{
+  "$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+  "parameters": {
+    "MachinePrefix": {
+      "type": "string",
+      "defaultValue": "wops-test"
+    },
+    "MachineCount": {
+      "type": "int",
+      "defaultValue": 2
+    },
+    "MachineSize": {
+      "type": "string",
+      "defaultValue": "Standard_A0"
+    },
+    "VNetName": {
+      "type": "string",
+      "defaultValue": "ve-network"
+    },
+    "SubnetName": {
+      "type": "string",
+      "defaultValue": "internal-subnet"
+    },
+    "StorageType": {
+      "type": "string",
+      "defaultValue": "Standard_LRS"
+    },
+    "MachineImagePublisher": {
+      "type": "string",
+      "defaultValue": "MicrosoftWindowsServer"
+    },
+    "MachineImageOffer": {
+      "type": "string",
+      "defaultValue": "WindowsServer"
+    },
+    "MachineOSVersion": {
+      "type": "string",
+      "defaultValue": "2012-R2-Datacenter"
+    },
+    "StorageName": {
+      "type": "string"
+    },
+    "AdminUser": {
+      "type": "string"
+    },
+    "AdminPassword": {
+      "type": "securestring"
+    },
+    "SecondaryDiskSizeGB": {
+      "type": "int",
+      "defaultValue": 10
+    }
+  },
+  "variables": {
+    "VnetId": "[resourceId('Microsoft.Network/virtualNetworks', parameters('VNetName'))]",
+    "SubnetId": "[concat(variables('VnetId'),'/subnets/', parameters('SubnetName'))]",
+    "PublicIpId": "[resourceId('Microsoft.Network/publicIPAddresses',concat(parameters('MachinePrefix'),'-','ip'))]",
+    "LbId": "[resourceId('Microsoft.Network/loadBalancers',concat(parameters('MachinePrefix'),'-','lb'))]",
+    "AsId": "[resourceId('Microsoft.Compute/availabilitySets',concat(parameters('MachinePrefix'),'-','as'))]",
+    "StorageContainer": "[concat('vhds-',parameters('MachinePrefix'))]"
+  },
+  
+  "resources": [
+    {
+      "name": "[parameters('VNetName')]",
+      "type": "Microsoft.Network/virtualNetworks",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-05-01-preview",
+      "properties": {
+        "addressSpace": {
+          "addressPrefixes": [
+            "10.0.0.0/16"
+          ]
+        },
+        "subnets": [
+          {
+            "name": "[parameters('subnetName')]",
+            "properties": {
+              "addressPrefix": "10.0.0.0/20"
+            }
+          }
+        ]
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/publicIPAddresses",
+      "name": "[concat(parameters('MachinePrefix'),'-','ip')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "publicIPAllocationMethod": "Dynamic",
+        "dnsSettings": { "domainNameLabel": "[parameters('MachinePrefix')]" }
+      },
+      "tags": {
+        "displayName": "Ip"
+      }
+    },
+    {
+      "name": "[parameters('StorageName')]",
+      "type": "Microsoft.Storage/storageAccounts",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-05-01-preview",
+      "dependsOn": [
+        
+       ],
+      "tags": {
+        "displayName": "Storage Account"
+      },
+      "properties": {
+        "accountType": "[parameters('StorageType')]"
+      }
+    },
+    {
+      "apiVersion": "2015-05-01-preview",
+      "type": "Microsoft.Network/loadBalancers",
+      "name": "[concat(parameters('MachinePrefix'),'-','lb')]",
+      "location": "[resourceGroup().location]",
+      "dependsOn": [
+        "[variables('PublicIpId')]"
+      ],
+      "tags": {
+        "displayName": "LoadBalancer"
+      },
+      "properties": {
+        "frontendIpConfigurations": [
+          {
+            "name": "[concat(parameters('MachinePrefix'),'-','lbfront')]",
+            "properties": {
+              "publicIPAddress": {
+                "id": "[variables('PublicIpId')]"
+              }
+            }
+          }
+        ],
+        "backendAddressPools": [
+          {
+            "name": "backendhttp"
+          }
+        ],
+        "loadBalancingRules": [
+          {
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(variables('LbId'), '/frontendIpConfigurations/',parameters('MachinePrefix'),'-','lbfront')]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(variables('LbId'), '/backendAddressPools/backendhttp')]"
+              },
+              "probe": {
+                "id": "[concat(variables('LbId'), '/probes/lbprobe')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 80,
+              "backendPort": 80,
+              "idleTimeoutInMinutes": 15
+            },
+            "name": "lbhttprule"
+          },
+          {
+            "properties": {
+              "frontendIPConfiguration": {
+                "id": "[concat(variables('LbId'), '/frontendIpConfigurations/',parameters('MachinePrefix'),'-','lbfront')]"
+              },
+              "backendAddressPool": {
+                "id": "[concat(variables('LbId'), '/backendAddressPools/backendhttp')]"
+              },
+              "probe": {
+                "id": "[concat(variables('LbId'), '/probes/lbhttpsprobe')]"
+              },
+              "protocol": "Tcp",
+              "frontendPort": 443,
+              "backendPort": 443,
+              "idleTimeoutInMinutes": 15
+            },
+            "name": "lbhttpsrule"
+          }
+        ],
+        "probes": [
+          {
+            "properties": {
+              "protocol": "Tcp",
+              "port": 80,
+              "intervalInSeconds": 15,
+              "numberOfProbes": 2
+            },
+            "name": "lbprobe"
+          },
+          {
+            "properties": {
+              "protocol": "Tcp",
+              "port": 443,
+              "intervalInSeconds": 15,
+              "numberOfProbes": 2
+            },
+            "name": "lbhttpsprobe"
+          }
+        ]
+      }
+    },
+    {
+      "type": "Microsoft.Compute/availabilitySets",
+      "name": "[concat(parameters('MachinePrefix'),'-','as')]",
+      "apiVersion": "2015-05-01-preview",
+      "location": "[resourceGroup().location]",
+      "tags": {
+        "displayName": "AvaliabilitySet"
+      },
+      "properties": {
+        "platformFaultDomainCount": 3,
+        "platformUpdateDomainCount": 3
+      }
+    },
+    {
+      "name": "[concat(parameters('MachinePrefix'),'-','ni','-',padLeft(copyindex(1),2,'0'))]",
+      "type": "Microsoft.Network/networkInterfaces",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-05-01-preview",
+      "dependsOn": [
+        "[variables('LbId')]",
+        "[variables('VnetId')]"
+      ],
+
+      "copy": {
+        "name": "nicLoop",
+        "count": "[parameters('MachineCount')]"
+      },
+
+      "tags": {
+        "displayName": "NetworkInterface"
+      },
+      "properties": {
+        "ipConfigurations": [
+          {
+            "name": "ipconfig1",
+            "properties": {
+              "privateIPAllocationMethod": "Dynamic",
+              "subnet": {
+                "id": "[variables('SubnetId')]"
+              },
+              "loadBalancerBackendAddressPools": [
+                {
+                  "id": "[concat(variables('LbId'), '/backendAddressPools/backendhttp')]"
+                }
+              ]
+            }
+          }
+        ]
+      }
+    },
+    {
+      "name": "[concat(parameters('MachinePrefix'),'-',padLeft(copyindex(1),2,'0'))]",
+      "type": "Microsoft.Compute/virtualMachines",
+      "location": "[resourceGroup().location]",
+      "apiVersion": "2015-05-01-preview",
+      "dependsOn": [
+        "[concat('Microsoft.Storage/storageAccounts/', parameters('StorageName'))]",
+        "[concat('Microsoft.Network/networkInterfaces/', parameters('MachinePrefix'),'-','ni','-',padLeft(copyindex(1),2,'0'))]",
+        "[concat('Microsoft.Compute/availabilitySets/',parameters('MachinePrefix'),'-','as')]"
+      ],
+      "copy": {
+        "name": "machineLoop",
+        "count": "[parameters('MachineCount')]"
+      },
+      "tags": {
+        "displayName": "Machines"
+      },
+      "properties": {
+        "availabilitySet": {
+          "id": "[resourceId('Microsoft.Compute/availabilitySets', concat(parameters('MachinePrefix'),'-','as'))]"
+        },
+
+        "hardwareProfile": {
+          "vmSize": "[parameters('MachineSize')]"
+        },
+        "osProfile": {
+          "windowsConfiguration": {
+            "provisionVMAgent": true,
+            "enableAutomaticUpdates": true
+          },
+          "computerName": "[concat(parameters('MachinePrefix'),'-',padLeft(copyindex(1),2,'0'))]",
+          "adminUsername": "[parameters('AdminUser')]",
+          "adminPassword": "[parameters('AdminPassword')]"
+        },
+        "storageProfile": {
+          "imageReference": {
+            "publisher": "[parameters('MachineImagePublisher')]",
+            "offer": "[parameters('MachineImageOffer')]",
+            "sku": "[parameters('MachineOSVersion')]",
+            "version": "latest"
+          },
+          "osDisk": {
+            "name": "MachineOSDisk",
+            "vhd": {
+              "uri": "[concat('http://', parameters('StorageName'), '.blob.core.windows.net/', variables('StorageContainer'), '/', parameters('MachinePrefix') , 'hd',padLeft(copyindex(1),2,'0'), '.vhd')]"
+            },
+            "caching": "ReadWrite",
+            "createOption": "FromImage"
+          },
+          "dataDisks": [
+            {
+              "name": "data",
+              "lun": 0,
+              "createOption": "Empty",
+              "vhd": {
+                "uri": "[concat('http://', parameters('StorageName'), '.blob.core.windows.net/', variables('StorageContainer'), '/', parameters('MachinePrefix') , 'data',padLeft(copyindex(1),2,'0'), '.vhd')]"
+              },
+              "diskSizeGB": "[parameters('SecondaryDiskSizeGB')]"
+            }
+          ]
+        },
+        "networkProfile": {
+          "networkInterfaces": [
+            {
+              "id": "[resourceId('Microsoft.Network/networkInterfaces', concat(parameters('MachinePrefix'),'-','ni','-',padLeft(copyindex(1),2,'0')))]"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "outputs": {
+    "deployment": {
+      "type": "object",
+      "value": "[deployment()]"
+    }
+  }
+}
